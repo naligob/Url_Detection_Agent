@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Url_Detection_Agent;
+using UrlTcpListenerLibrary.Interfaces;
 
 using IHost host = CreateHostBuilder(args).Build();
 using var scope = host.Services.CreateScope();
@@ -24,7 +25,6 @@ static IHostBuilder CreateHostBuilder(string[] args)
     return Host.CreateDefaultBuilder(args)
         .ConfigureServices((_, services) =>
         {
-            services.AddSingleton<ITcpService, TcpService>();
             services.AddSingleton<AgentApp>();
             services.AddSingleton<IProxyServerService,ProxyServerService>();
         });
