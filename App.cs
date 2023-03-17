@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
-using UrlTcpListenerLibrary.Interfaces;
+using Url_Detection_Agent.Interfaces;
 
 namespace Url_Detection_Agent;
 
