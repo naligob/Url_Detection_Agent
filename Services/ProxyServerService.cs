@@ -1,6 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using System.Collections.Specialized;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -18,15 +18,16 @@ public class ProxyServerService : IProxyServerService
     private readonly ILogger<ProxyServerService> _logger;
     private IUrlMemoryCache _urlCache;
     private IAPIService _aPIService;
-    private readonly HtmlHelperService _htmlHelperService;
-    private static SemaphoreSlim _semaphore;
-    public ProxyServerService(ILogger<ProxyServerService> logger, IUrlMemoryCache urlCache, IAPIService aPIService)
+    private readonly IHtmlHelperService _htmlHelperService;
+    private static SemaphoreSlim _semaphore = new SemaphoreSlim(1);
+    private readonly IConfiguration _configuration;
+    public ProxyServerService(ILogger<ProxyServerService> logger, IUrlMemoryCache urlCache, IAPIService aPIService, IConfiguration configuration, IHtmlHelperService htmlHelperService)
     {
         _logger = logger;
         _urlCache = urlCache;
         _aPIService = aPIService;
-        _semaphore = new SemaphoreSlim(1);
-        _htmlHelperService = new HtmlHelperService();
+        _htmlHelperService = htmlHelperService;
+        _configuration = configuration;
     }
     public void RunProxy()
     {
@@ -98,38 +99,8 @@ public class ProxyServerService : IProxyServerService
         proxyServer.Stop();
     }
 
-
-
-    // filter suffix .js/.css/.png etc. ignore
-    // filter header referer ignore
-    // method : GET accept
-    // header : {ConentType : text/html} accept?
     public async Task OnRequest(object sender, SessionEventArgs e)
     {
-        //var t_url = e.HttpClient.Request.Url;
-
-        //if (t_url.Contains("/agentdetectoreurl?"))
-        //{
-        //    await _semaphore.WaitAsync();
-        //    try
-        //    {
-        //        var start = t_url.IndexOf("/agentdetectoreurl?") + 19;
-        //        var concateString = t_url.Remove(0, start);
-        //        var hashbyte = Convert.FromBase64String(concateString);
-        //        var urlResult = _urlCache.TryGetUrlByHash(hashbyte);
-        //        if (urlResult != null)
-        //        {
-        //            e.HttpClient.Response.Headers.Clear();
-        //            e.Redirect(urlResult);
-        //        }
-        //    }
-        //    finally
-        //    {
-        //        _semaphore.Release();
-        //    }
-        //    return;
-        //}
-
         var host = e.HttpClient.Request.RequestUri.Host;
 
         var method = e.HttpClient.Request.Method.ToUpper();
@@ -140,17 +111,6 @@ public class ProxyServerService : IProxyServerService
             else if (e.HttpClient.Request.RequestUri.Segments.LastOrDefault() == "uviewer" && host.Contains("google"))
                 e.UserData = "Skip";
 
-            //// Get/Set request body bytes
-            //byte[] bodyBytes = await e.GetRequestBody();
-            //e.SetRequestBody(bodyBytes);
-
-            //// Get/Set request body as string
-            //string bodyString = await e.GetRequestBodyAsString();
-            //e.SetRequestBodyString(bodyString);
-
-
-            // store request 
-            // so that you can find it from response handler
         }
 
         // Redirect exmple
@@ -160,7 +120,6 @@ public class ProxyServerService : IProxyServerService
         //}
     }
 
-    // Modify response
     public async Task OnResponse(object sender, SessionEventArgs e)
     {
         var t_url = e.HttpClient.Request.Url;
@@ -172,13 +131,10 @@ public class ProxyServerService : IProxyServerService
             {
                 var start = t_url.IndexOf("/agentdetectoreurl?") + 19;
                 var hashUrlString = t_url.Remove(0, start);
-                //var hashbyte = Convert.FromBase64String(hashUrlString);
                 var hashResult = _urlCache.TryGetUrl(hashUrlString, out bool isInCache);
                 if (isInCache && hashResult != null)
                 {
                     e.HttpClient.Response.Headers.Clear();
-                    //e.Redirect(hashResult.Value.Url);
-                    //e.SetResponseBodyString(hashResult.Value.Body);
                     e.Ok(hashResult.Body, hashResult.Headers);
                 }
             }
@@ -190,9 +146,6 @@ public class ProxyServerService : IProxyServerService
         }
         else
         {
-
-
-
             if (e.HttpClient.Request.Method == "GET" && e.HttpClient.Response.StatusCode == 200)
             {
                 byte[] bodyBytes = await e.GetResponseBody();
@@ -215,12 +168,6 @@ public class ProxyServerService : IProxyServerService
                 e.SetRequestBodyString(body);
             }
         }
-
-        //if (e.UserData != null)
-        //{
-        //    // access request from UserData propery where we stored it in RequestHandler
-        //    var request = (Request)e.UserData;
-        //}
     }
 
     private void AgentURLHandler(string url, SessionEventArgs e, string body)
@@ -233,54 +180,56 @@ public class ProxyServerService : IProxyServerService
         var cacheModelResponse = _urlCache.TryGetUrl(urlHashCodeString, out bool isInCache);
         if (isInCache)
         {
-            // check if url legit
             var validUrlInCache = cacheModelResponse.IsLegit.HasValue && cacheModelResponse.IsLegit.Value;
             if (!validUrlInCache)
             {
-                // make redirect 
-                //Console.WriteLine($"From cache url:{cacheModelResponse.UrlName} is redirected to safe page \n the reason is {cacheModelResponse.ReasonsForUnsafty}");
-                e.Ok(_htmlHelperService.GetHtmlSafePageContent(new HtmlModelContant { Url = "/agentdetectoreurl?" + cacheModelResponse.UrlHashCodeString, ReasonsList = cacheModelResponse.ReasonsForUnsafty }));
+                SetRedirectResponse(e, cacheModelResponse);
+            }
+        }
+        else
+        {
+            var serverResponse = _aPIService.ServerDetectorAPICall(url);
+
+            var newCacheItem = new UrlCacheModel
+            {
+                UrlName = url,
+                UrlHashCodeString = urlHashCodeString,
+                Headers = e.HttpClient.Response.Headers.GetAllHeaders(),
+                Body = body
+            };
+
+            if (serverResponse.Is_malicious)
+            {
+                newCacheItem.IsLegit = false;
+                var topReasons = GetTopKReasons(dataObject: serverResponse.Reason?.ToString() ?? string.Empty, numberOfReasons: 3);
+                newCacheItem.ReasonsForUnsafty = topReasons;
+                _urlCache.AddUrl(newCacheItem);
+                SetRedirectResponse(e, newCacheItem);
             }
             else
             {
-                //Console.WriteLine($"From cache url:{cacheModelResponse.UrlName} is OK!");
-            }
-        }
-        else // add to cache
-        {
-            // request to server
-            var response = _aPIService.ServerDetectorAPICall(url);
-            
-            var newCacheItem = new UrlCacheModel { UrlName = url, UrlHashCodeString = urlHashCodeString };
-            if (!response.Is_malicious)
-            {
-                //Console.WriteLine($"Server response {url} is legit");
-                // need to add as hash url
                 newCacheItem.IsLegit = true;
                 _urlCache.AddUrl(newCacheItem);
-            }
-            else if (response.Is_malicious)
-            {
-                //var hashedUrl = HashSHA256Bytes(parameter: url, salt: cacheSize);
-                //Console.WriteLine($"Server response {url} is DETECTED!");
-                newCacheItem.Headers = e.HttpClient.Response.Headers.GetAllHeaders();
-                newCacheItem.Body = body;
-                newCacheItem.IsLegit = false;
-                var topReasons = GetTopKReasons(dataObject: response.Reason?.ToString() ?? string.Empty, numberOfReasons: 3);
-                newCacheItem.ReasonsForUnsafty = topReasons;
-                _urlCache.AddUrl(newCacheItem);
-                e.Ok(_htmlHelperService.GetHtmlSafePageContent(new HtmlModelContant { Url = "/agentdetectoreurl?" + urlHashCodeString, ReasonsList = topReasons }));
             }
         }
     }
 
-    private List<string>? GetTopKReasons(string dataObject, int numberOfReasons)
+    private void SetRedirectResponse(SessionEventArgs e, UrlCacheModel cacheModelResponse)
+        => e.Ok(_htmlHelperService.GetHtmlSafePageContent(
+                    new HtmlModelContant
+                    {
+                        Url = "/agentdetectoreurl?" + cacheModelResponse.UrlHashCodeString,
+                        ReasonsList = cacheModelResponse.ReasonsForUnsafty
+                    }));
+
+
+    private List<string> GetTopKReasons(string dataObject, int numberOfReasons)
     {
         var deserializeReasons = JsonConvert.DeserializeObject<Dictionary<string, double>>(dataObject)?.ToList() ?? new() { new(key: "Sorry no reasons was found", value: 0) };
         deserializeReasons.Sort((pair1, pair2) => pair1.Value.CompareTo(pair2.Value));
         if (!deserializeReasons.Any())
             return new() { "Sorry no reasons was found" };
-        return deserializeReasons.TakeLast(numberOfReasons).Select(x => x.Key.Replace("_"," ").ToUpper()).Reverse().ToList();
+        return deserializeReasons.TakeLast(numberOfReasons).Select(x => x.Key.Replace("_", " ").ToUpper()).Reverse().ToList();
     }
 
     private byte[] HashSHA256Bytes(string parameter, int salt)
@@ -294,7 +243,6 @@ public class ProxyServerService : IProxyServerService
         var result = "";
         if (UrlValidationWithSeffix(e.HttpClient.Request.RequestUri.Segments.LastOrDefault() ?? "") && body.Contains("<html"))
         {
-            //var dtNow = DateTime.Now;
             if (e.UserData != null)
             {
                 var request = (string)e.UserData;
@@ -302,7 +250,6 @@ public class ProxyServerService : IProxyServerService
                 {
                     string urlFromGoogle = GetFromBodyUrl(body);
                     result = urlFromGoogle;
-                    //Console.WriteLine($"{dtNow} OnResponse :\n\tURL:{urlFromGoogle}");
                 }
             }
             else if (UrlValidationWithContentType(e))
@@ -314,12 +261,10 @@ public class ProxyServerService : IProxyServerService
 
                 if (!refererExists)
                 {
-                    //Console.WriteLine($"{dtNow} OnResponse :\n\tURL:{url}");
                     result = url;
                 }
                 else if (refererHeader.Contains(host))
                 {
-                    //Console.WriteLine($"{dtNow} OnResponse :\n\tURL:{url}\n\n\tReferer:{refererHeader}\n\n\tHost:{host}");
                     result = url;
                 }
             }
@@ -378,14 +323,11 @@ public class ProxyServerService : IProxyServerService
         return result;
     }
 
-
-    // Allows overriding default client certificate selection logic durng mutual authentication
     public Task OnCertificateSelection(object sender, CertificateSelectionEventArgs e)
     {
         // set e.clientCertificate to override
         return Task.CompletedTask;
     }
-    // Allows overriding default certificate validation logic
     public Task OnCertificateValidation(object sender, CertificateValidationEventArgs e)
     {
         // set IsValid to true/false based on Certificate Errors

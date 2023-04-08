@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Url_Detection_Agent": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

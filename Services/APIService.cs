@@ -1,5 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using RestSharp;
 using System.Net;
 using Url_Detection_Agent.Models.API.ServerDetector;
@@ -10,12 +10,14 @@ public class APIService : IAPIService
 {
     private readonly ILogger<APIService> _logger;
     private readonly RestClient _client;
-    // License will be given as an input to the class
-    private readonly string _licenseTokenCookie = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJvcmlAYWJjLmNvbSIsInNjb3BlIjpbIioiLCJzaGFyaW5nIl0sImV4cCI6MTcxMjQ5MDMyNCwiaWF0IjoxNjgwOTU0MzI0LCJzdWIiOiJqd3QtY29va2llcy10ZXN0In0.--F6f_UzP1IFCoFrWeuIvX3lKj5KqqAd0kxAHXdQehI";
-    public APIService(ILogger<APIService> logger)
+    private readonly IConfiguration _configuration;
+    private readonly string _licenseTokenCookie;
+    public APIService(ILogger<APIService> logger, IConfiguration configuration)
     {
         _logger = logger;
-        _client = new RestClient("http://localhost:8000/");
+        _configuration = configuration;
+        _client = new RestClient(_configuration.GetSection("ServerConfiguration:ServerHostName").Value);
+        _licenseTokenCookie = _configuration.GetSection("ClientLicence").Value;
     }
 
     public ServerDetectorResponse ServerDetectorAPICall(string url, string host= "localhost")

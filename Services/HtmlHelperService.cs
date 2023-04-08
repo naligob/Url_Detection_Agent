@@ -3,7 +3,7 @@ using Url_Detection_Agent.Models;
 
 namespace Url_Detection_Agent.Services
 {
-    public class HtmlHelperService
+    public class HtmlHelperService : IHtmlHelperService
     {
         public HtmlHelperService()
         {
@@ -31,7 +31,7 @@ namespace Url_Detection_Agent.Services
                     sb.Append("<div class=\"info-box\"> " +
                         $"<h5>number {reasonData.Index}</h5>");
                     sb.Append($"<p>{reasonData.Reason}</p></div>");
-                    if (reasonData.Index / 3 != 0) 
+                    if (reasonData.Index / 3 != 0)
                     {
                         sb.Append("<div class=\"vline\"></div>");
                     }
