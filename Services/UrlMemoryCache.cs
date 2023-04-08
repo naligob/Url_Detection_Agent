@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using System.Collections;
 using System.Runtime.Caching;
 using Url_Detection_Agent.Interfaces;
 using Url_Detection_Agent.Models;
@@ -16,7 +15,8 @@ public class UrlMemoryCache : IDisposable, IUrlMemoryCache
         _memoryCache = new MemoryCache("urlsCache");
         _itemPolicy = new CacheItemPolicy
         {
-            AbsoluteExpiration = DateTimeOffset.Now.AddSeconds(120.0)
+            SlidingExpiration = TimeSpan.FromMinutes(2),
+            RemovedCallback = (args) => { Console.WriteLine($"\nitem was removed: {args.CacheItem.Key}\n"); }
         };
         _logger = logger;
     }
@@ -24,21 +24,25 @@ public class UrlMemoryCache : IDisposable, IUrlMemoryCache
     {
         var result = false;
 
-        if (!string.IsNullOrEmpty(urlCacheModel.UrlName))
+        if (!string.IsNullOrEmpty(urlCacheModel.UrlHashCodeString))
         {
-            if (!_memoryCache.Contains(urlCacheModel.UrlName))
+            if (!_memoryCache.Contains(urlCacheModel.UrlHashCodeString))
             {
-                _memoryCache.Add(
-                    key: urlCacheModel.UrlName,
+                result = _memoryCache.Add(
+                    key: urlCacheModel.UrlHashCodeString,
                     value: urlCacheModel,
                     policy: _itemPolicy
                 );
-                result = true;
+                if (!urlCacheModel.IsLegit.Value)
+                    Console.WriteLine($"\nitem added:{urlCacheModel.UrlHashCodeString}\n not legit! \n result of addition: {result} ");
             }
         }
         return result;
     }
-
+    public int GetCacheSize()
+    {
+        return _memoryCache.Count();
+    }
     public void Dispose()
     {
         _memoryCache.Dispose();
@@ -60,5 +64,16 @@ public class UrlMemoryCache : IDisposable, IUrlMemoryCache
         //}
         return result;
     }
+    //public UrlCacheModel? TryGetUrlByHash(byte[] hash)
+    //{
+
+    //    var values = _memoryCache.Select(x => (UrlCacheModel)x.Value).ToList();
+    //    if (values.Any())
+    //    {
+    //        var result = values.FirstOrDefault(x => x.UrlHashCode != null && x.UrlHashCode.SequenceEqual(hash));
+    //        return result != null ? result : null;
+    //    }
+    //    return null;
+    //}
 }
 

@@ -7,4 +7,6 @@ public interface IUrlMemoryCache
     bool AddUrl(UrlCacheModel url);
     void Dispose();
     UrlCacheModel TryGetUrl(string urlKey, out bool isInCache);
+    int GetCacheSize();
+    //UrlCacheModel? TryGetUrlByHash(byte[] hash);
 }
