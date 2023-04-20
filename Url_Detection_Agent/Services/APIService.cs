@@ -11,11 +11,15 @@ public class APIService : IAPIService
 {
     private readonly RestClient _client;
     private readonly IConfiguration _configuration;
+    private string _host;
     //private readonly string _licenseTokenCookie;
     public APIService(IConfiguration configuration)
     {
         _configuration = configuration;
-        _client = new RestClient(_configuration.GetSection("ServerConfiguration:ServerHostName").Value);
+        var serverUri = _configuration.GetSection("ServerConfiguration:ServerHostName").Value;
+        _client = new RestClient(serverUri);
+        var uri = new Uri(serverUri);
+        _host = uri.Host;
         //_licenseTokenCookie = _configuration.GetSection("ClientLicence").Value;
     }
 
@@ -26,11 +30,10 @@ public class APIService : IAPIService
         var request = new RestRequest("detect/", Method.Post) { RequestFormat = DataFormat.Json };
         request.AddBody(new { Url_link = url });
         var token = _configuration.GetSection("ClientLicence").Value;
-#if DEBUG
-        request.AddCookie("jwt-token", token, "/", "localhost");
-#else
-        request.AddCookie("jwt-token", token , "/", "192.168.68.103");
-#endif
+
+
+        request.AddCookie("jwt-token", token, "/", host);
+
         var res = _client.Execute<ServerDetectorResponse>(request);
         if (res.StatusCode != HttpStatusCode.OK)
             return response;
