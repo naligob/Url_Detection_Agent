@@ -35,5 +35,6 @@ static IHostBuilder CreateHostBuilder(string[] args)
             services.AddSingleton<IUrlMemoryCache, UrlMemoryCache>();
             services.AddSingleton<IAPIService, APIService>();
             services.AddSingleton<IHtmlHelperService, HtmlHelperService>();
+            services.AddScoped<IAppInstallerHelperService, AppInstallerHelperService>();
         });
 }
