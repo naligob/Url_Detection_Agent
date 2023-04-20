@@ -13,10 +13,10 @@ public class AgentApp
     private readonly IUserVerification _userVerification;
     private readonly ILogger<AgentApp> _log;
 
-    public AgentApp(ILogger<AgentApp> log/*, IProxyServerService proxyServerService*/,IUserVerification userVerification)
+    public AgentApp(ILogger<AgentApp> log, IProxyServerService proxyServerService,IUserVerification userVerification)
     {
         _log = log;
-        //_proxyServerService = proxyServerService;
+        _proxyServerService = proxyServerService;
         _userVerification = userVerification;
     }
 
@@ -37,7 +37,7 @@ public class AgentApp
         if (programIsValidToRun)
         {
 		    _log.LogInformation("Agent Start");
-		    //_proxyServerService.RunProxy();
+		    _proxyServerService.RunProxy();
         }
 	}
 }
