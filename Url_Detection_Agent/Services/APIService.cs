@@ -26,8 +26,11 @@ public class APIService : IAPIService
         var request = new RestRequest("detect/", Method.Post) { RequestFormat = DataFormat.Json };
         request.AddBody(new { Url_link = url });
         var token = _configuration.GetSection("ClientLicence").Value;
+#if DEBUG
+        request.AddCookie("jwt-token", token, "/", "localhost");
+#else
         request.AddCookie("jwt-token", token , "/", "192.168.68.103");
-
+#endif
         var res = _client.Execute<ServerDetectorResponse>(request);
         if (res.StatusCode != HttpStatusCode.OK)
             return response;
@@ -42,6 +45,7 @@ public class APIService : IAPIService
         request.AddBody(new { License = license });
 
         var res = _client.Execute<ServerLicenseAuthResponse>(request);
+        response.statusCode = res.StatusCode;
         if (res.StatusCode != HttpStatusCode.OK)
             return response;
         else

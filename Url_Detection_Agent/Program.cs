@@ -4,7 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Url_Detection_Agent;
 using Url_Detection_Agent.Interfaces;
 using Url_Detection_Agent.Services;
-
+using Url_Detection_Agent.Utils;
 
 using IHost host = CreateHostBuilder(args).Build();
 using var scope = host.Services.CreateScope();
@@ -26,7 +26,7 @@ static IHostBuilder CreateHostBuilder(string[] args)
     return Host.CreateDefaultBuilder(args)
         .ConfigureAppConfiguration((context,app) =>
         {
-            app.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json");
+            app.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json",optional:false,reloadOnChange:true);
         })
         .ConfigureServices((_, services) =>
         {
@@ -35,6 +35,7 @@ static IHostBuilder CreateHostBuilder(string[] args)
             services.AddSingleton<IUrlMemoryCache, UrlMemoryCache>();
             services.AddSingleton<IAPIService, APIService>();
             services.AddSingleton<IHtmlHelperService, HtmlHelperService>();
+            services.AddSingleton<IUserVerification, UserVerification>();
             services.AddScoped<IAppInstallerHelperService, AppInstallerHelperService>();
         });
 }
