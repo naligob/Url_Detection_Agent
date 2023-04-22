@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using Url_Detection_Agent.Services;
 using Url_Detection_Agent.Utils;
 using Microsoft.Extensions.Configuration;
+using static Url_Detection_Agent.Enum.Enums;
 
 namespace Url_Detection_Agent;
 
@@ -23,6 +24,15 @@ public class AgentApp
 
     public void Run(string[] args)
 	{
+        
+        if (LicenseValidetion())
+        {
+		    _log.LogInformation("Agent Start");
+		    _proxyServerService.RunProxy();
+        }
+	}
+    private bool LicenseValidetion()
+    {
         var programIsValidToRun = true;
         if (!_userVerification.IsLocalLicenseValid())
         {
@@ -30,14 +40,9 @@ public class AgentApp
         }
         if (!programIsValidToRun)
         {
-		    var result = _userVerification.ShowDialog("Please enter license key ","License");
-            programIsValidToRun = result != null;
+            var statusResult = _userVerification.ShowDialog("Please enter license key ", "License");
+            programIsValidToRun = statusResult == UserVerificationStatus.Success;
         }
-
-        if (programIsValidToRun)
-        {
-		    _log.LogInformation("Agent Start");
-		    _proxyServerService.RunProxy();
-        }
-	}
+        return programIsValidToRun;
+    }
 }

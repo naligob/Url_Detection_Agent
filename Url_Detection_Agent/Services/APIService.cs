@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using RestSharp;
 using System.Net;
 using Url_Detection_Agent.Models.API.ServerDetector;
@@ -12,7 +11,6 @@ public class APIService : IAPIService
     private readonly RestClient _client;
     private readonly IConfiguration _configuration;
     private string _host;
-    //private readonly string _licenseTokenCookie;
     public APIService(IConfiguration configuration)
     {
         _configuration = configuration;
@@ -20,7 +18,6 @@ public class APIService : IAPIService
         _client = new RestClient(serverUri);
         var uri = new Uri(serverUri);
         _host = uri.Host;
-        //_licenseTokenCookie = _configuration.GetSection("ClientLicence").Value;
     }
 
     public ServerDetectorResponse ServerDetectorAPICall(string url, string host= "localhost")

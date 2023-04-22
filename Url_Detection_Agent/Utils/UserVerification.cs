@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System.Configuration;
 using System.Reflection;
 using Url_Detection_Agent.Services;
+using static Url_Detection_Agent.Enum.Enums;
 
 namespace Url_Detection_Agent.Utils
 {
@@ -25,14 +26,14 @@ namespace Url_Detection_Agent.Utils
 
             return result;
         }
-        public string ShowDialog(string prompt, string title, string defaultValue = null, int? xPos = null, int? yPos = null)
+        public UserVerificationStatus ShowDialog(string prompt, string title, string defaultValue = null, int? xPos = null, int? yPos = null)
         {
             InputBoxDialog form = new InputBoxDialog(prompt, title, _configuration, defaultValue, xPos, yPos);
             DialogResult result = form.ShowDialog();
             if (result == DialogResult.Cancel)
-                return null;
+                return UserVerificationStatus.Fail;
             else
-                return form.Value;
+                return UserVerificationStatus.Success;
         }
         #endregion
 
