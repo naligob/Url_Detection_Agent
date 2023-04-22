@@ -48,7 +48,7 @@ public class ProxyServerService : IProxyServerService
         proxyServer.ServerCertificateValidationCallback += OnCertificateValidation;
         proxyServer.ClientCertificateSelectionCallback += OnCertificateSelection;
 
-        var explicitEndPoint = new ExplicitProxyEndPoint(IPAddress.Any, 8002, true)
+        var explicitEndPoint = new ExplicitProxyEndPoint(IPAddress.Any, 8010, true)
         {
             // Use self-issued generic certificate on all https requests
             // Optimizes preformance by not creating a certificate for each https-enabled domain
@@ -67,7 +67,7 @@ public class ProxyServerService : IProxyServerService
         // Transparent endpoint is useful for reverse proxy (client is now aware of the existence of proxy)
         // A transparent endpoint usually requires a network router port forwarding HTTP(S) packets or DNS
         // to send data to this endPoint
-        var transparentEndPoint = new TransparentProxyEndPoint(IPAddress.Any, 8001, true)
+        var transparentEndPoint = new TransparentProxyEndPoint(IPAddress.Any, 8009, true)
         {
             // Generic Certificate hostname to use
             // when SNI is disabled by client
