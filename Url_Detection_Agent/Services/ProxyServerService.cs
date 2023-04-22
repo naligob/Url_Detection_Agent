@@ -80,7 +80,7 @@ public class ProxyServerService : IProxyServerService
         //proxyServer.UpStreamHttpsProxy = new ExternalProxy() { HostName = "localhost", Port = 8888 };
 
         foreach (var endPoint in proxyServer.ProxyEndPoints)
-            Console.WriteLine($"Listening on '{endPoint.GetType().Name}' endpoint at Ip {endPoint.IpAddress} and port: {endPoint.Port} ");
+            _logger.LogInformation($"Listening on '{endPoint.GetType().Name}' endpoint at Ip {endPoint.IpAddress} and port: {endPoint.Port} ");
 
         // Only explicit proxies can be set as system proxy!
         proxyServer.SetAsSystemHttpProxy(explicitEndPoint);
