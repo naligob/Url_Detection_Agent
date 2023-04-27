@@ -28,7 +28,7 @@ namespace Url_Detection_Agent.Utils
         }
         public UserVerificationStatus ShowDialog(string prompt, string title, string defaultValue = null, int? xPos = null, int? yPos = null)
         {
-            InputBoxDialog form = new InputBoxDialog(prompt, title, _configuration, defaultValue, xPos, yPos);
+            InputBoxDialog form = new InputBoxDialog(prompt, title, _configuration, _APIService, defaultValue, xPos, yPos);
             DialogResult result = form.ShowDialog();
             if (result == DialogResult.Cancel)
                 return UserVerificationStatus.Fail;
@@ -51,10 +51,10 @@ namespace Url_Detection_Agent.Utils
             private readonly ErrorProvider _errorProvider;
 
             #region Constructor
-            public InputBoxDialog(string prompt, string title, IConfiguration configuration, string defaultValue = null, int? xPos = null, int? yPos = null)
+            public InputBoxDialog(string prompt, string title, IConfiguration configuration,IAPIService aPIService, string defaultValue = null, int? xPos = null, int? yPos = null)
             {
                 _configuration = configuration;
-                _APIService = new APIService(configuration);
+                _APIService = aPIService;
 
                 _errorProvider = new ErrorProvider();
 

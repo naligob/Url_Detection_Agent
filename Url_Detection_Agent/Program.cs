@@ -30,7 +30,7 @@ namespace Url_Detection_Agent
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Log.CloseAndFlush();
                 throw;
             }
         }
@@ -55,22 +55,16 @@ namespace Url_Detection_Agent
                 {
                     service.Services.RemoveAll<ILoggerProvider>();
 
-                    Serilog.Debugging.SelfLog.Enable(Console.Error); // this outputs 
-                                                                     // internal Serilog errors to the console in case something 
-                                                                     // breaks with one of the Serilog extensions or the framework itself
+                    Serilog.Debugging.SelfLog.Enable(Console.Error); 
 
                     Serilog.ILogger logger = new LoggerConfiguration()
-                        .Enrich.FromLogContext() // this adds more information 
-                                                 // to the output of the log, like when receiving http requests, 
-                                                 // it will provide information about the request
-                        .MinimumLevel.Verbose()   // this gives the minimum level to log, 
-                                                  // in production the level would be higher
-                        .WriteTo.File(@"AppLogs\Logs.txt") // one of the logger pipeline elements 
-                                                  // for writing out the log message
+                        .Enrich.FromLogContext() 
+                        .MinimumLevel.Verbose()
+                        .WriteTo.File(@"AppLogs\Logs.txt")
                         .CreateLogger();
 
                     service.AddProvider(new SerilogLoggerProvider
-                             (logger)); // this adds the serilog provider from the start
+                             (logger)); 
                 });
         }
     }

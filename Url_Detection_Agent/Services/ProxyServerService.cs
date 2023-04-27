@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Net;
@@ -21,6 +22,8 @@ public class ProxyServerService : IProxyServerService
     private readonly IHtmlHelperService _htmlHelperService;
     private static SemaphoreSlim _semaphore = new SemaphoreSlim(1);
     private readonly IConfiguration _configuration;
+    //private static ProxyServer _proxyServer = new ProxyServer();
+    //private ExplicitProxyEndPoint _explicitEndPoint;
     public ProxyServerService(ILogger<ProxyServerService> logger, IUrlMemoryCache urlCache, IAPIService aPIService, IConfiguration configuration, IHtmlHelperService htmlHelperService)
     {
         _logger = logger;
@@ -97,7 +100,19 @@ public class ProxyServerService : IProxyServerService
         proxyServer.ClientCertificateSelectionCallback -= OnCertificateSelection;
 
         proxyServer.Stop();
+
     }
+    //private void StopProxy()
+    //{
+    //    // Unsubscribe & Quit
+    //    _explicitEndPoint.BeforeTunnelConnectRequest -= OnBeforeTunnelConnectedRequest;
+    //    _proxyServer.BeforeRequest -= OnRequest;
+    //    _proxyServer.BeforeResponse -= OnResponse;
+    //    _proxyServer.ServerCertificateValidationCallback -= OnCertificateValidation;
+    //    _proxyServer.ClientCertificateSelectionCallback -= OnCertificateSelection;
+
+    //    _proxyServer.Stop();
+    //}
 
     public async Task OnRequest(object sender, SessionEventArgs e)
     {
@@ -112,12 +127,6 @@ public class ProxyServerService : IProxyServerService
                 e.UserData = "Skip";
 
         }
-
-        // Redirect exmple
-        //if (e.HttpClient.Request.RequestUri.AbsoluteUri.Contains("wikipedia.org"))
-        //{
-        //    e.Redirect("https://www.paypal.com");
-        //}
     }
 
     public async Task OnResponse(object sender, SessionEventArgs e)
@@ -221,7 +230,6 @@ public class ProxyServerService : IProxyServerService
                         Url = "/agentdetectoreurl?" + cacheModelResponse.UrlHashCodeString,
                         ReasonsList = cacheModelResponse.ReasonsForUnsafty
                     }));
-
 
     private List<string> GetTopKReasons(string dataObject, int numberOfReasons)
     {
@@ -349,4 +357,5 @@ public class ProxyServerService : IProxyServerService
             e.DecryptSsl = false;
         }
     }
+
 }
