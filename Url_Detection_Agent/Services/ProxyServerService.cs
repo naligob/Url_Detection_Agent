@@ -22,8 +22,8 @@ public class ProxyServerService : IProxyServerService
     private readonly IHtmlHelperService _htmlHelperService;
     private static SemaphoreSlim _semaphore = new SemaphoreSlim(1);
     private readonly IConfiguration _configuration;
-    //private static ProxyServer _proxyServer = new ProxyServer();
-    //private ExplicitProxyEndPoint _explicitEndPoint;
+    private readonly ProxyServer _proxyServer = new ProxyServer();
+    private ExplicitProxyEndPoint _explicitEndPoint;
     public ProxyServerService(ILogger<ProxyServerService> logger, IUrlMemoryCache urlCache, IAPIService aPIService, IConfiguration configuration, IHtmlHelperService htmlHelperService)
     {
         _logger = logger;
@@ -35,37 +35,27 @@ public class ProxyServerService : IProxyServerService
     public void RunProxy()
     {
 
-        var proxyServer = new ProxyServer();
+        //_proxyServer = new ProxyServer();
+        // Assign the exception handler delegate
+        _proxyServer.ExceptionFunc = HandleProxyException;
 
-        // locally trust root certificate used by this proxy
-        // proxyServer.CertificateManager.TrustRootCertificate(true);
 
-        // proxyServer.CertificateManager.CertificateEngine = Titanium.Web.Proxy.Network.CertificateEngine.DefultWindows;
-        // proxyServer.CertificateManager.EnsureRootCertificate();
-        // optionally set the Certificate Engine
-        // Under Mono only BouncyCastle will be supported
-        proxyServer.CertificateManager.CertificateEngine = Titanium.Web.Proxy.Network.CertificateEngine.BouncyCastle;
+        _proxyServer.CertificateManager.CertificateEngine = Titanium.Web.Proxy.Network.CertificateEngine.BouncyCastle;
 
-        proxyServer.BeforeRequest += OnRequest;
-        proxyServer.BeforeResponse += OnResponse;
-        proxyServer.ServerCertificateValidationCallback += OnCertificateValidation;
-        proxyServer.ClientCertificateSelectionCallback += OnCertificateSelection;
+        _proxyServer.BeforeRequest += OnRequest;
+        _proxyServer.BeforeResponse += OnResponse;
+        _proxyServer.ServerCertificateValidationCallback += OnCertificateValidation;
+        _proxyServer.ClientCertificateSelectionCallback += OnCertificateSelection;
 
-        var explicitEndPoint = new ExplicitProxyEndPoint(IPAddress.Any, 8010, true)
-        {
-            // Use self-issued generic certificate on all https requests
-            // Optimizes preformance by not creating a certificate for each https-enabled domain
-            // Useful when certificate trust is not required by proxy clients
-            //GenericCetificate = new X509Certificate2(Path.Combine(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "genericcert.pfx"),"password")
-        };
+        _explicitEndPoint = new ExplicitProxyEndPoint(IPAddress.Any, 8010, true) {};
 
         // Fired when a CONNECT request is received
-        explicitEndPoint.BeforeTunnelConnectRequest += OnBeforeTunnelConnectedRequest;
+        _explicitEndPoint.BeforeTunnelConnectRequest += OnBeforeTunnelConnectedRequest;
 
         // An explicit endpoint is where the client jnows about the existence of a proxy
         // So client sends request in a proxy friendly manner
-        proxyServer.AddEndPoint(explicitEndPoint);
-        proxyServer.Start();
+        _proxyServer.AddEndPoint(_explicitEndPoint);
+        _proxyServer.Start();
 
         // Transparent endpoint is useful for reverse proxy (client is now aware of the existence of proxy)
         // A transparent endpoint usually requires a network router port forwarding HTTP(S) packets or DNS
@@ -77,46 +67,46 @@ public class ProxyServerService : IProxyServerService
             GenericCertificateName = "google.com"
         };
 
-        proxyServer.AddEndPoint(transparentEndPoint);
+        _proxyServer.AddEndPoint(transparentEndPoint);
 
-        //proxyServer.UpStreamHttpProxy = new ExternalProxy() { HostName = "localhost", Port = 8888 };
-        //proxyServer.UpStreamHttpsProxy = new ExternalProxy() { HostName = "localhost", Port = 8888 };
-
-        foreach (var endPoint in proxyServer.ProxyEndPoints)
+        foreach (var endPoint in _proxyServer.ProxyEndPoints)
             _logger.LogInformation($"Listening on '{endPoint.GetType().Name}' endpoint at Ip {endPoint.IpAddress} and port: {endPoint.Port} ");
 
         // Only explicit proxies can be set as system proxy!
-        proxyServer.SetAsSystemHttpProxy(explicitEndPoint);
-        proxyServer.SetAsSystemHttpsProxy(explicitEndPoint);
+        _proxyServer.SetAsSystemHttpProxy(_explicitEndPoint);
+        _proxyServer.SetAsSystemHttpsProxy(_explicitEndPoint);
 
         // wait here (You can use somthing else as a wait function, I am using this as a demo)
         Console.Read();
 
+        StopProxy();
         // Unsubscribe & Quit
-        explicitEndPoint.BeforeTunnelConnectRequest -= OnBeforeTunnelConnectedRequest;
-        proxyServer.BeforeRequest -= OnRequest;
-        proxyServer.BeforeResponse -= OnResponse;
-        proxyServer.ServerCertificateValidationCallback -= OnCertificateValidation;
-        proxyServer.ClientCertificateSelectionCallback -= OnCertificateSelection;
+        //explicitEndPoint.BeforeTunnelConnectRequest -= OnBeforeTunnelConnectedRequest;
+        //proxyServer.BeforeRequest -= OnRequest;
+        //proxyServer.BeforeResponse -= OnResponse;
+        //proxyServer.ServerCertificateValidationCallback -= OnCertificateValidation;
+        //proxyServer.ClientCertificateSelectionCallback -= OnCertificateSelection;
 
-        proxyServer.Stop();
+        //proxyServer.Stop();
 
     }
-    //private void StopProxy()
-    //{
-    //    // Unsubscribe & Quit
-    //    _explicitEndPoint.BeforeTunnelConnectRequest -= OnBeforeTunnelConnectedRequest;
-    //    _proxyServer.BeforeRequest -= OnRequest;
-    //    _proxyServer.BeforeResponse -= OnResponse;
-    //    _proxyServer.ServerCertificateValidationCallback -= OnCertificateValidation;
-    //    _proxyServer.ClientCertificateSelectionCallback -= OnCertificateSelection;
+    private void StopProxy()
+    {
+        // Unsubscribe & Quit
+        _explicitEndPoint.BeforeTunnelConnectRequest -= OnBeforeTunnelConnectedRequest;
+        _proxyServer.BeforeRequest -= OnRequest;
+        _proxyServer.BeforeResponse -= OnResponse;
+        _proxyServer.ServerCertificateValidationCallback -= OnCertificateValidation;
+        _proxyServer.ClientCertificateSelectionCallback -= OnCertificateSelection;
 
-    //    _proxyServer.Stop();
-    //}
+        _proxyServer.Stop();
+    }
 
     public async Task OnRequest(object sender, SessionEventArgs e)
     {
         var host = e.HttpClient.Request.RequestUri.Host;
+        
+        //TODO add skip validetion for web host and server host
 
         var method = e.HttpClient.Request.Method.ToUpper();
         if (method == "GET")
@@ -347,15 +337,21 @@ public class ProxyServerService : IProxyServerService
 
     private async Task OnBeforeTunnelConnectedRequest(object sender, TunnelConnectSessionEventArgs e)
     {
-        string hostname = e.HttpClient.Request.RequestUri.Host;
+        //string hostname = e.HttpClient.Request.RequestUri.Host;
 
-        if (hostname.Contains("dropbox.com"))
-        {
-            // Exclude Https addresses you don't want to proxy
-            // Useful for client that use certificate pinning
-            // for exmple dropbox.com
-            e.DecryptSsl = false;
-        }
+        //if (hostname.Contains("dropbox.com"))
+        //{
+        //    // Exclude Https addresses you don't want to proxy
+        //    // Useful for client that use certificate pinning
+        //    // for exmple dropbox.com
+        //    e.DecryptSsl = false;
+        //}
+    }
+    private void HandleProxyException(Exception exception)
+    {
+        _logger.LogError($"An exception occurred: {exception.Message}");
+        StopProxy();
+        _logger.LogInformation("The application closed and unsubscribe!");
     }
 
 }

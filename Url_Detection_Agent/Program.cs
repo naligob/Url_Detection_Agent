@@ -49,7 +49,6 @@ namespace Url_Detection_Agent
                     services.AddSingleton<IAPIService, APIService>();
                     services.AddSingleton<IHtmlHelperService, HtmlHelperService>();
                     services.AddSingleton<IUserVerification, UserVerification>();
-                    services.AddScoped<IAppInstallerHelperService, AppInstallerHelperService>();
                 })
                 .ConfigureLogging((_,service) =>
                 {

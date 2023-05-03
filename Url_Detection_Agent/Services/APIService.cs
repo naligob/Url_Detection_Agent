@@ -41,6 +41,8 @@ public class APIService : IAPIService
         catch (Exception ex)
         {
            _logger.LogError(ex.Message + ex.InnerException != null ? "\n" + ex.InnerException.Message : string.Empty);
+
+            throw new CloseSessionException("Closing the session due to an exception.", ex);
         }
         
         if (res.StatusCode != HttpStatusCode.OK)

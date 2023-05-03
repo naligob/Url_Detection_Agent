@@ -204,7 +204,8 @@ namespace Url_Detection_Agent.Utils
                 }
                 catch (ConfigurationErrorsException)
                 {
-                    Console.WriteLine("Error rewriting app settings");
+                    //Console.WriteLine("Error rewriting app settings");
+                    MessageBox.Show("Error: please reinstall the app");
                 }
             }
             #endregion
