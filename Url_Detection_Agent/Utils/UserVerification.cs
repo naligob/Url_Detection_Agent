@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using System.Configuration;
 using System.Reflection;
+using Url_Detection_Agent.Properties;
 using Url_Detection_Agent.Services;
 using static Url_Detection_Agent.Enum.Enums;
 
@@ -189,8 +190,9 @@ namespace Url_Detection_Agent.Utils
             {
                 try
                 {
+                    var env = string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")) ? Settings.Default.Env : Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
                     var filePath = Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory,
-                        $"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json");
+                        $"appsettings.{env}.json");
                     var json = File.ReadAllText(filePath);
                     dynamic jsonObj = JsonConvert.DeserializeObject(json);
 

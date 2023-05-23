@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore;
 using Serilog;
 using Serilog.Extensions.Logging;
+using Url_Detection_Agent.Properties;
 
 namespace Url_Detection_Agent
 {
@@ -39,7 +40,8 @@ namespace Url_Detection_Agent
             return Host.CreateDefaultBuilder(args)
                 .ConfigureAppConfiguration((context, app) =>
                 {
-                    app.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json", optional: false, reloadOnChange: true);
+                    var env = string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")) ? Settings.Default.Env : Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
+                    app.AddJsonFile($"appsettings.{env}.json", optional: false, reloadOnChange: true);
                 })
                 .ConfigureServices((_, services) =>
                 {

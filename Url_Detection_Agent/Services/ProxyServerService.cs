@@ -37,7 +37,7 @@ public class ProxyServerService : IProxyServerService
 
         //_proxyServer = new ProxyServer();
         // Assign the exception handler delegate
-        _proxyServer.ExceptionFunc = HandleProxyException;
+        //_proxyServer.ExceptionFunc = HandleProxyException;
 
 
         _proxyServer.CertificateManager.CertificateEngine = Titanium.Web.Proxy.Network.CertificateEngine.BouncyCastle;
@@ -95,11 +95,11 @@ public class ProxyServerService : IProxyServerService
         // Unsubscribe & Quit
         _explicitEndPoint.BeforeTunnelConnectRequest -= OnBeforeTunnelConnectedRequest;
         _proxyServer.BeforeRequest -= OnRequest;
-        _proxyServer.BeforeResponse -= OnResponse;
+        _proxyServer.BeforeResponse -= OnResponseActionCatch;
         _proxyServer.ServerCertificateValidationCallback -= OnCertificateValidation;
         _proxyServer.ClientCertificateSelectionCallback -= OnCertificateSelection;
-
-        _proxyServer.Stop();
+        if(_proxyServer.ProxyRunning)
+            _proxyServer.Stop();
     }
 
     public async Task OnRequest(object sender, SessionEventArgs e)
@@ -337,21 +337,35 @@ public class ProxyServerService : IProxyServerService
 
     private async Task OnBeforeTunnelConnectedRequest(object sender, TunnelConnectSessionEventArgs e)
     {
-        //string hostname = e.HttpClient.Request.RequestUri.Host;
+        string hostname = e.HttpClient.Request.RequestUri.Host;
 
-        //if (hostname.Contains("dropbox.com"))
-        //{
-        //    // Exclude Https addresses you don't want to proxy
-        //    // Useful for client that use certificate pinning
-        //    // for exmple dropbox.com
-        //    e.DecryptSsl = false;
-        //}
+        if (hostname.Contains("dropbox.com"))
+        {
+            // Exclude Https addresses you don't want to proxy
+            // Useful for client that use certificate pinning
+            // for exmple dropbox.com
+            e.DecryptSsl = false;
+        }
     }
-    private void HandleProxyException(Exception exception)
+
+    public async Task OnResponseActionCatch(object sender, SessionEventArgs e)
     {
-        _logger.LogError($"An exception occurred: {exception.Message}");
-        StopProxy();
-        _logger.LogInformation("The application closed and unsubscribe!");
+        try
+        {
+            await OnRequest(sender,e);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"An exception occurred: {ex.Message}");
+            if (_proxyServer.ProxyRunning)
+            {
+                StopProxy();
+                _logger.LogInformation("The application closed and unsubscribe!");
+            }
+            else
+            {
+                _logger.LogInformation("The application closed but the proxy never run");
+            }
+        }
     }
-
 }

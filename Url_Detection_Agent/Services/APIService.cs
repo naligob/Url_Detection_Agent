@@ -64,5 +64,4 @@ public class APIService : IAPIService
         else
             return res.Data ?? response;
     }
-
 }
